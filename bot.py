@@ -1,0 +1,101 @@
+# -*- coding: utf-8 -*-
+import asyncio
+import logging
+from logging.handlers import RotatingFileHandler
+from typing import Optional
+
+import discord
+from discord import app_commands
+
+# ====== CONFIG ======
+import os
+TOKEN = os.getenv("TOKEN")   # ⚠️ NHỚ THAY TOKEN MỚI
+GUILD_ID = 1365241690893586493
+CHANNEL_ID = 1407065566883221504
+STARTUP_MESSAGE = "Vietcong on the mic!"
+
+# ====== LOGGING ======
+handler = RotatingFileHandler("bot.log", maxBytes=5_000_000, backupCount=3, encoding="utf-8")
+fmt = logging.Formatter("[%(asctime)s] [%(levelname)s] %(name)s: %(message)s")
+handler.setFormatter(fmt)
+root = logging.getLogger()
+root.setLevel(logging.INFO)
+root.addHandler(handler)
+logging.getLogger("discord").setLevel(logging.INFO)
+
+# ====== BOT ======
+class MyClient(discord.Client):
+    def __init__(self):
+        intents = discord.Intents.default()
+        super().__init__(intents=intents)
+        self.tree = app_commands.CommandTree(self)
+        self.synced = False
+
+    async def setup_hook(self):
+        guild = discord.Object(id=GUILD_ID)
+        await self.tree.sync(guild=guild)
+        print(f"✅ Slash command đã sync trong server {GUILD_ID}")
+
+    async def on_ready(self):
+        print(f"✅ Bot ready as {self.user}")
+
+        if not self.synced:
+            guild = discord.Object(id=GUILD_ID)
+            await self.tree.sync(guild=guild)
+            self.synced = True
+
+        # gửi tin nhắn startup
+        await asyncio.sleep(2)
+        try:
+            channel = await self.fetch_channel(CHANNEL_ID)
+            await channel.send(STARTUP_MESSAGE)
+        except Exception as e:
+            print(f"❌ Lỗi gửi startup message: {e}")
+
+
+client = MyClient()
+GUILD = discord.Object(id=GUILD_ID)
+
+# ====== COMMANDS ======
+
+@client.tree.command(name="ping", description="Trả lời Pong!", guild=GUILD)
+async def ping(interaction: discord.Interaction):
+    await interaction.response.send_message("🏓 Pong!")
+
+@client.tree.command(name="hello", description="Chào theo tên bạn nhập", guild=GUILD)
+@app_commands.describe(name="Tên của bạn")
+async def hello(interaction: discord.Interaction, name: str):
+    await interaction.response.send_message(f"👋 Hello {name}!")
+
+@client.tree.command(name="announce", description="Gửi thông báo", guild=GUILD)
+@app_commands.describe(
+    channel="Kênh",
+    message="Nội dung",
+    user="Tag user",
+    role="Tag role"
+)
+async def announce(
+    interaction: discord.Interaction,
+    channel: discord.TextChannel,
+    message: str,
+    user: Optional[discord.Member] = None,
+    role: Optional[discord.Role] = None,
+):
+    await interaction.response.defer(ephemeral=True)
+
+    mentions = []
+    if user:
+        mentions.append(user.mention)
+    if role:
+        mentions.append(role.mention)
+
+    content = " ".join(mentions) + " " + message if mentions else message
+
+    try:
+        await channel.send(content)
+        await interaction.followup.send("✅ Đã gửi!", ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"❌ Lỗi: {e}", ephemeral=True)
+
+# ====== RUN ======
+client.run(TOKEN)
