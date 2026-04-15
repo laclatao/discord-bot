@@ -9,7 +9,7 @@ from discord import app_commands
 
 # ====== CONFIG ======
 import os
-TOKEN = os.getenv("TOKEN")
+TOKEN = os.getenv("TOKEN")  # dùng Railway Variables
 GUILD_ID = 1365241690893586493
 CHANNEL_ID = 1407065566883221504
 STARTUP_MESSAGE = "Vietcong on the mic!"
@@ -27,7 +27,7 @@ logging.getLogger("discord").setLevel(logging.INFO)
 class MyClient(discord.Client):
     def __init__(self):
         intents = discord.Intents.default()
-        intents.message_content = True  # 🔥 QUAN TRỌNG
+        intents.message_content = True  # để dùng chat "vc"
         super().__init__(intents=intents)
         self.tree = app_commands.CommandTree(self)
         self.synced = False
@@ -52,12 +52,16 @@ class MyClient(discord.Client):
         except Exception as e:
             print(f"❌ Lỗi gửi startup message: {e}")
 
-    # 🔥 CHAT "vc"
+    # 🔥 CHAT "vc" + XÓA TIN NHẮN
     async def on_message(self, message):
         if message.author.bot:
             return
 
         if message.content.strip().lower() == "vc":
+            try:
+                await message.delete()
+            except:
+                pass
             await message.channel.send("Vietcong on the mic!")
 
 client = MyClient()
@@ -74,12 +78,20 @@ async def ping(interaction: discord.Interaction):
 async def hello(interaction: discord.Interaction, name: str):
     await interaction.response.send_message(f"👋 Hello {name}!")
 
-@client.tree.command(name="announce", description="Gửi thông báo", guild=GUILD)
+# ====== ANNOUNCE ======
+ALLOWED = discord.AllowedMentions(
+    everyone=True,
+    roles=True,
+    users=True,
+    replied_user=False
+)
+
+@client.tree.command(name="announce", description="Gửi thông báo + tag", guild=GUILD)
 @app_commands.describe(
-    channel="Kênh",
-    message="Nội dung",
-    user="Tag user",
-    role="Tag role"
+    channel="Kênh sẽ đăng",
+    message="Nội dung thông báo",
+    user="Tag một thành viên",
+    role="Tag một role"
 )
 async def announce(
     interaction: discord.Interaction,
@@ -88,22 +100,24 @@ async def announce(
     user: Optional[discord.Member] = None,
     role: Optional[discord.Role] = None,
 ):
-    await interaction.response.defer(ephemeral=True)
+    await interaction.response.defer()
 
     mentions = []
+
     if user:
         mentions.append(user.mention)
+
     if role:
         mentions.append(role.mention)
 
-    # ✅ TAG RA SAU
+    # 🔥 TAG RA SAU
     content = f"{message} {' '.join(mentions)}" if mentions else message
 
     try:
-        await channel.send(content)
-        await interaction.followup.send("✅ Đã gửi!", ephemeral=True)
+        await channel.send(content, allowed_mentions=ALLOWED)
+        await interaction.followup.send("✅ Đã gửi!")
     except Exception as e:
-        await interaction.followup.send(f"❌ Lỗi: {e}", ephemeral=True)
+        await interaction.followup.send(f"❌ Lỗi: {e}")
 
 # ====== RUN ======
 client.run(TOKEN)
