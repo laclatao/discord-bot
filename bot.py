@@ -12,7 +12,7 @@ TOKEN = os.getenv("TOKEN")
 
 GUILD_ID = 1365241690893586493
 TARGET_CHANNEL_ID = 1407065566883221504  # channel public
-YOUR_ID = 123456789  # 🔥 thay bằng ID của bạn
+YOUR_ID = 466393399856201729  # 🔥 thay bằng ID của bạn
 
 # ====== LOGGING ======
 handler = RotatingFileHandler("bot.log", maxBytes=5_000_000, backupCount=3, encoding="utf-8")
