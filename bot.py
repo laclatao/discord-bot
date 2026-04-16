@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
+import asyncio
 import logging
 from logging.handlers import RotatingFileHandler
+from typing import Optional
 
 import discord
 from discord import app_commands
@@ -8,9 +10,7 @@ from discord import app_commands
 # ====== CONFIG ======
 import os
 TOKEN = os.getenv("TOKEN")
-
 GUILD_ID = 1365241690893586493
-TARGET_CHANNEL_ID = 1407065566883221504  # channel public
 
 # ====== LOGGING ======
 handler = RotatingFileHandler("bot.log", maxBytes=5_000_000, backupCount=3, encoding="utf-8")
@@ -19,16 +19,18 @@ handler.setFormatter(fmt)
 root = logging.getLogger()
 root.setLevel(logging.INFO)
 root.addHandler(handler)
+logging.getLogger("discord").setLevel(logging.INFO)
 
 # ====== BOT ======
 class MyClient(discord.Client):
     def __init__(self):
         intents = discord.Intents.default()
         intents.message_content = True
-        intents.members = True
+        intents.members = True  # giúp dropdown ổn định hơn
 
         super().__init__(intents=intents)
         self.tree = app_commands.CommandTree(self)
+        self.synced = False
 
     async def setup_hook(self):
         guild = discord.Object(id=GUILD_ID)
@@ -36,44 +38,73 @@ class MyClient(discord.Client):
 
     async def on_ready(self):
         print(f"✅ Bot ready as {self.user}")
+        # ❌ KHÔNG gửi tin nhắn gì nữa
 
+    # ====== CHAT VC ======
     async def on_message(self, message):
         if message.author.bot:
             return
 
-        # ====== CHAT VC ======
         if message.content.strip().lower() == "vc":
             try:
                 await message.delete()
             except:
                 pass
-
-            await message.reply("Vietcong on the mic!", mention_author=False)
-            return
-
-        # ====== REPLY = ANNOUNCE ======
-        if message.reference:
-            try:
-                ref_msg = await message.channel.fetch_message(message.reference.message_id)
-
-                target_channel = self.get_channel(TARGET_CHANNEL_ID)
-
-                content = f"{message.content} {ref_msg.author.mention}"
-
-                await target_channel.send(content)
-
-                # ❌ xóa tin nhắn người gửi
-                await message.delete()
-
-            except Exception as e:
-                print("Lỗi:", e)
+            await message.channel.send("Vietcong on the mic!")
 
 client = MyClient()
+GUILD = discord.Object(id=GUILD_ID)
 
-# ====== COMMAND ======
-@client.tree.command(name="ping", description="Ping test")
+# ====== COMMANDS ======
+
+@client.tree.command(name="ping", description="Trả lời Pong!", guild=GUILD)
 async def ping(interaction: discord.Interaction):
     await interaction.response.send_message("🏓 Pong!")
+
+@client.tree.command(name="hello", description="Chào theo tên bạn nhập", guild=GUILD)
+@app_commands.describe(name="Tên của bạn")
+async def hello(interaction: discord.Interaction, name: str):
+    await interaction.response.send_message(f"👋 Hello {name}!")
+
+# ====== ANNOUNCE ======
+ALLOWED = discord.AllowedMentions(
+    everyone=True,
+    roles=True,
+    users=True,
+    replied_user=False
+)
+
+@client.tree.command(name="announce", description="Gửi thông báo + tag", guild=GUILD)
+@app_commands.describe(
+    channel="Kênh sẽ đăng",
+    message="Nội dung thông báo",
+    user="Tag một thành viên",
+    role="Tag một role"
+)
+async def announce(
+    interaction: discord.Interaction,
+    channel: discord.TextChannel,
+    message: str,
+    user: Optional[discord.Member] = None,
+    role: Optional[discord.Role] = None,
+):
+    await interaction.response.defer()
+
+    mentions = []
+
+    if user:
+        mentions.append(user.mention)
+
+    if role:
+        mentions.append(role.mention)
+
+    content = f"{message} {' '.join(mentions)}" if mentions else message
+
+    try:
+        await channel.send(content, allowed_mentions=ALLOWED)
+        await interaction.followup.send("✅ Đã gửi!")
+    except Exception as e:
+        await interaction.followup.send(f"❌ Lỗi: {e}")
 
 # ====== RUN ======
 client.run(TOKEN)
