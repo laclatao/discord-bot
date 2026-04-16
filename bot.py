@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import asyncio
 import logging
 from logging.handlers import RotatingFileHandler
 
@@ -12,7 +11,6 @@ TOKEN = os.getenv("TOKEN")
 
 GUILD_ID = 1365241690893586493
 TARGET_CHANNEL_ID = 1407065566883221504  # channel public
-YOUR_ID = 466393399856201729  # 🔥 thay bằng ID của bạn
 
 # ====== LOGGING ======
 handler = RotatingFileHandler("bot.log", maxBytes=5_000_000, backupCount=3, encoding="utf-8")
@@ -38,14 +36,9 @@ class MyClient(discord.Client):
 
     async def on_ready(self):
         print(f"✅ Bot ready as {self.user}")
-        # ❌ không gửi gì khi online
 
     async def on_message(self, message):
         if message.author.bot:
-            return
-
-        # 🔥 CHỈ CHO BẠN DÙNG (tránh người khác spam)
-        if message.author.id != YOUR_ID:
             return
 
         # ====== CHAT VC ======
@@ -58,7 +51,7 @@ class MyClient(discord.Client):
             await message.reply("Vietcong on the mic!", mention_author=False)
             return
 
-        # ====== REPLY = BOT ANNOUNCE ======
+        # ====== REPLY = ANNOUNCE ======
         if message.reference:
             try:
                 ref_msg = await message.channel.fetch_message(message.reference.message_id)
@@ -69,11 +62,11 @@ class MyClient(discord.Client):
 
                 await target_channel.send(content)
 
-                # ❌ xóa tin nhắn của bạn
+                # ❌ xóa tin nhắn người gửi
                 await message.delete()
 
             except Exception as e:
-                print(e)
+                print("Lỗi:", e)
 
 client = MyClient()
 
