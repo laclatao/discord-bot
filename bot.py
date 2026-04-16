@@ -11,8 +11,6 @@ from discord import app_commands
 import os
 TOKEN = os.getenv("TOKEN")
 GUILD_ID = 1365241690893586493
-CHANNEL_ID = 1407065566883221504
-STARTUP_MESSAGE = "Vietcong on the mic!"
 
 # ====== LOGGING ======
 handler = RotatingFileHandler("bot.log", maxBytes=5_000_000, backupCount=3, encoding="utf-8")
@@ -28,7 +26,7 @@ class MyClient(discord.Client):
     def __init__(self):
         intents = discord.Intents.default()
         intents.message_content = True
-        intents.members = True  # 🔥 QUAN TRỌNG NHẤT (fix dropdown)
+        intents.members = True  # giúp dropdown ổn định hơn
 
         super().__init__(intents=intents)
         self.tree = app_commands.CommandTree(self)
@@ -40,20 +38,9 @@ class MyClient(discord.Client):
 
     async def on_ready(self):
         print(f"✅ Bot ready as {self.user}")
+        # ❌ KHÔNG gửi tin nhắn gì nữa
 
-        if not self.synced:
-            guild = discord.Object(id=GUILD_ID)
-            await self.tree.sync(guild=guild)
-            self.synced = True
-
-        await asyncio.sleep(2)
-        try:
-            channel = await self.fetch_channel(CHANNEL_ID)
-            await channel.send(STARTUP_MESSAGE)
-        except Exception as e:
-            print(f"❌ Lỗi gửi startup message: {e}")
-
-    # 🔥 CHAT VC
+    # ====== CHAT VC ======
     async def on_message(self, message):
         if message.author.bot:
             return
