@@ -16,11 +16,11 @@ GUILD_ID = 1365241690893586493
 handler = RotatingFileHandler("bot.log", maxBytes=5_000_000, backupCount=3, encoding="utf-8")
 logging.basicConfig(level=logging.INFO, handlers=[handler])
 
-# ===== MEMORY (XỊN HƠN) =====
+# ===== MEMORY =====
 chat_history = {}
+MAX_HISTORY = 15
 
-MAX_HISTORY = 15  # nhớ lâu hơn
-
+# ===== AI =====
 def chat_ai(user_id, message):
     url = "https://openrouter.ai/api/v1/chat/completions"
 
@@ -29,10 +29,9 @@ def chat_ai(user_id, message):
             {
                 "role": "system",
                 "content": (
-                    "Bạn là một thằng bạn thân cực kỳ lầy lội, nói chuyện kiểu Gen Z Việt Nam. "
-                    "Hơi cà khịa, hài hước, không quá lịch sự. "
-                    "Trả lời ngắn gọn, tự nhiên như người thật, có cảm xúc. "
-                    "Thỉnh thoảng trêu người dùng, nhưng không toxic quá mức."
+                    "Bạn là bạn thân cực kỳ lầy lội, nói chuyện kiểu Gen Z Việt Nam. "
+                    "Hài hước, cà khịa nhẹ, nói ngắn gọn như người thật. "
+                    "Đôi lúc trêu người dùng nhưng không toxic quá."
                 )
             }
         ]
@@ -46,19 +45,23 @@ def chat_ai(user_id, message):
     }
 
     data = {
-        "model": "openchat/openchat-7b",
+        "model": "mistralai/mistral-7b-instruct",  # 🔥 model ổn định
         "messages": chat_history[user_id],
         "temperature": 0.9
     }
 
     res = requests.post(url, headers=headers, json=data)
 
+    print("STATUS:", res.status_code)
     print("API:", res.text)
+
+    if res.status_code != 200:
+        return "Tao đang bị lỗi API 😭"
 
     try:
         reply = res.json()["choices"][0]["message"]["content"]
     except:
-        return "Tao đang lag tí 😭"
+        return "API trả dữ liệu lỗi 😭"
 
     chat_history[user_id].append({"role": "assistant", "content": reply})
 
@@ -95,14 +98,27 @@ class MyClient(discord.Client):
             await message.reply("Vietcong on the mic!", mention_author=False)
             return
 
-        # ===== AI CHAT (CHỈ KHI TAG) =====
-        if self.user not in message.mentions:
+        # ===== AI CHAT =====
+        content = message.content
+
+        # 🔥 detect mention chuẩn + fallback
+        is_mention = (
+            self.user in message.mentions
+            or f"<@{self.user.id}>" in content
+            or f"<@!{self.user.id}>" in content
+            or content.lower().startswith("bot ")
+        )
+
+        if not is_mention:
             return
 
-        content = message.content
+        # 🔥 xóa tag
         content = content.replace(f"<@{self.user.id}>", "")
         content = content.replace(f"<@!{self.user.id}>", "")
+        content = content.lower().replace("bot", "", 1)
         content = content.strip()
+
+        print("INPUT:", content)
 
         if not content:
             return
