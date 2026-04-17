@@ -28,7 +28,10 @@ def chat_ai(user_id, message):
         chat_history[user_id] = [
             {
                 "role": "system",
-                "content": "Bạn là bạn thân lầy lội, nói chuyện kiểu Gen Z Việt Nam, cà khịa nhẹ, tự nhiên như người thật."
+                "content": (
+                    "Bạn là bạn thân lầy lội, nói chuyện kiểu Gen Z Việt Nam, "
+                    "hài hước, cà khịa nhẹ, nói ngắn gọn như người thật."
+                )
             }
         ]
 
@@ -52,12 +55,12 @@ def chat_ai(user_id, message):
     print("API:", res.text)
 
     if res.status_code != 200:
-        return "Lỗi API rồi 😭"
+        return "Tao đang lỗi API rồi 😭"
 
     try:
         reply = res.json()["choices"][0]["message"]["content"]
     except:
-        return "API lỗi format 😭"
+        return "API lỗi 😭"
 
     chat_history[user_id].append({"role": "assistant", "content": reply})
 
@@ -87,8 +90,10 @@ class MyClient(discord.Client):
         if message.author.bot:
             return
 
+        content = message.content.lower()
+
         # ===== VC =====
-        if message.content.strip().lower() == "vc":
+        if content == "vc":
             try:
                 await message.delete()
             except:
@@ -96,27 +101,13 @@ class MyClient(discord.Client):
             await message.reply("Vietcong on the mic!", mention_author=False)
             return
 
-        content = message.content
-
-        print("MENTIONS:", message.mentions)
-
-        is_mention = (
-            self.user in message.mentions
-            or f"<@{self.user.id}>" in content
-            or f"<@!{self.user.id}>" in content
-            or content.lower().startswith("bot ")
-        )
-
-        print("IS_MENTION:", is_mention)
-
-        if not is_mention:
+        # ===== TRIGGER CHAT =====
+        # 🔥 chỉ cần bắt đầu bằng "bot"
+        if not content.startswith("bot"):
             return
 
-        # ===== XÓA TAG =====
-        content = content.replace(f"<@{self.user.id}>", "")
-        content = content.replace(f"<@!{self.user.id}>", "")
-        content = content.lower().replace("bot", "", 1)
-        content = content.strip()
+        # xóa chữ "bot"
+        content = content.replace("bot", "", 1).strip()
 
         print("INPUT:", content)
 
