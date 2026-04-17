@@ -13,7 +13,6 @@ TOKEN = os.getenv("TOKEN")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 GUILD_ID = 1365241690893586493
 
-# 👉 tên gọi bot (có thể đổi)
 BOT_NAMES = ["lala", "bé", "laclatao"]
 
 # ===== LOG =====
@@ -37,6 +36,7 @@ def chat_ai(user_id, message):
                     "Trả lời cực ngắn, tối đa 1 câu. "
                     "Không giải thích, không dài dòng. "
                     "Nói tự nhiên như chat ngoài đời. "
+                    "Luôn nói tiếng Việt. "
                     "Ưu tiên câu ngắn kiểu: 'ừ', 'ok', 'vl', 'đang chán đây'."
                 )
             }
@@ -54,7 +54,7 @@ def chat_ai(user_id, message):
         "model": "meta-llama/llama-3-8b-instruct",
         "messages": chat_history[user_id],
         "temperature": 1.0,
-        "max_tokens": 40   # 🔥 ép nói ngắn
+        "max_tokens": 40
     }
 
     res = requests.post(url, headers=headers, json=data)
@@ -107,16 +107,26 @@ class MyClient(discord.Client):
             await message.reply("Vietcong on the mic!", mention_author=False)
             return
 
-        # ===== TRIGGER =====
+        # ===== CHECK REPLY BOT =====
+        is_reply_to_bot = False
+        if message.reference:
+            try:
+                replied_msg = await message.channel.fetch_message(message.reference.message_id)
+                if replied_msg.author.id == self.user.id:
+                    is_reply_to_bot = True
+            except:
+                pass
+
+        # ===== CHECK GỌI TÊN =====
         mentioned = any(name in content for name in BOT_NAMES)
 
-        # 10% tự nói chuyện
+        # ===== AUTO CHAT 10% =====
         auto = random.random() < 0.1
 
-        if not mentioned and not auto:
+        if not mentioned and not is_reply_to_bot and not auto:
             return
 
-        # bỏ tên bot
+        # ===== XÓA TÊN BOT =====
         for name in BOT_NAMES:
             content = content.replace(name, "")
 
