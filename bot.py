@@ -22,13 +22,13 @@ logging.basicConfig(level=logging.INFO, handlers=[handler])
 
 # ===== MEMORY =====
 chat_history = {}
-MAX_HISTORY = 10
+MAX_HISTORY = 12
 
-# ===== CLEAN OUTPUT (CHỐNG LOẠN NGÔN NGỮ) =====
+# ===== CLEAN OUTPUT =====
 def clean_reply(text: str) -> str:
-    # Nếu có ký tự lạ (Cyrillic, German...) → reset
+    # chống nhảy ngôn ngữ
     if re.search(r"[А-Яа-яЁёÜüß]", text):
-        return "nãy nói nhảm tí :v"
+        return "nãy nói nhảm tí kkk"
     return text.strip()
 
 # ===== AI =====
@@ -40,12 +40,12 @@ def chat_ai(user_id, message):
             {
                 "role": "system",
                 "content": (
-                    "Mày là bạn thân. "
-                    "LUÔN chỉ được trả lời bằng tiếng Việt. "
-                    "KHÔNG dùng tiếng Anh hay ngôn ngữ khác. "
-                    "Trả lời cực ngắn, tối đa 1 câu. "
-                    "Nói tự nhiên như chat ngoài đời. "
-                    "Không giải thích, không dài dòng."
+                    "Mày là bạn thân, nói chuyện tự nhiên như ngoài đời. "
+                    "Luôn dùng tiếng Việt. "
+                    "Trả lời ngắn vừa phải (1-2 câu), không cụt lủn. "
+                    "Có cảm xúc, kiểu chat Messenger. "
+                    "Thỉnh thoảng cà khịa nhẹ, nhưng không toxic. "
+                    "Không nói kiểu AI hoặc sách giáo khoa."
                 )
             }
         ]
@@ -61,8 +61,8 @@ def chat_ai(user_id, message):
     data = {
         "model": "meta-llama/llama-3-8b-instruct",
         "messages": chat_history[user_id],
-        "temperature": 0.9,
-        "max_tokens": 40
+        "temperature": 1.1,   # 🔥 tự nhiên hơn
+        "max_tokens": 80      # 🔥 không bị cụt
     }
 
     res = requests.post(url, headers=headers, json=data)
@@ -77,7 +77,7 @@ def chat_ai(user_id, message):
         reply = res.json()["choices"][0]["message"]["content"]
         reply = clean_reply(reply)
     except:
-        return "lỗi 😭"
+        return "lỗi tí 😭"
 
     chat_history[user_id].append({"role": "assistant", "content": reply})
 
@@ -107,15 +107,6 @@ class MyClient(discord.Client):
 
         content = message.content.lower()
 
-        # ===== VC =====
-        if content.strip() == "vc":
-            try:
-                await message.delete()
-            except:
-                pass
-            await message.reply("Vietcong on the mic!", mention_author=False)
-            return
-
         # ===== CHECK REPLY BOT =====
         is_reply_to_bot = False
         if message.reference:
@@ -130,7 +121,7 @@ class MyClient(discord.Client):
         mentioned = any(name in content for name in BOT_NAMES)
 
         # ===== AUTO CHAT =====
-        auto = random.random() < 0.1
+        auto = random.random() < 0.08
 
         if not mentioned and not is_reply_to_bot and not auto:
             return
