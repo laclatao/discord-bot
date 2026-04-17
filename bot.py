@@ -1,28 +1,25 @@
 # -*- coding: utf-8 -*-
 import logging
 from logging.handlers import RotatingFileHandler
-import random
 import requests
 import os
 
 import discord
 from discord import app_commands
 
-# ====== CONFIG ======
+# ===== CONFIG =====
 TOKEN = os.getenv("TOKEN")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 GUILD_ID = 1365241690893586493
 
-# ====== LOGGING ======
+# ===== LOG =====
 handler = RotatingFileHandler("bot.log", maxBytes=5_000_000, backupCount=3, encoding="utf-8")
-fmt = logging.Formatter("[%(asctime)s] [%(levelname)s] %(name)s: %(message)s")
-handler.setFormatter(fmt)
-root = logging.getLogger()
-root.setLevel(logging.INFO)
-root.addHandler(handler)
+logging.basicConfig(level=logging.INFO, handlers=[handler])
 
-# ====== AI ======
+# ===== MEMORY (XỊN HƠN) =====
 chat_history = {}
+
+MAX_HISTORY = 15  # nhớ lâu hơn
 
 def chat_ai(user_id, message):
     url = "https://openrouter.ai/api/v1/chat/completions"
@@ -31,12 +28,17 @@ def chat_ai(user_id, message):
         chat_history[user_id] = [
             {
                 "role": "system",
-                "content": "Bạn là bạn thân, nói chuyện kiểu Gen Z Việt Nam, hài hước, cà khịa nhẹ, trả lời ngắn gọn."
+                "content": (
+                    "Bạn là một thằng bạn thân cực kỳ lầy lội, nói chuyện kiểu Gen Z Việt Nam. "
+                    "Hơi cà khịa, hài hước, không quá lịch sự. "
+                    "Trả lời ngắn gọn, tự nhiên như người thật, có cảm xúc. "
+                    "Thỉnh thoảng trêu người dùng, nhưng không toxic quá mức."
+                )
             }
         ]
 
     chat_history[user_id].append({"role": "user", "content": message})
-    chat_history[user_id] = chat_history[user_id][-8:]
+    chat_history[user_id] = chat_history[user_id][-MAX_HISTORY:]
 
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -45,24 +47,25 @@ def chat_ai(user_id, message):
 
     data = {
         "model": "openchat/openchat-7b",
-        "messages": chat_history[user_id]
+        "messages": chat_history[user_id],
+        "temperature": 0.9
     }
 
     res = requests.post(url, headers=headers, json=data)
 
-    print("API RESPONSE:", res.text)  # debug
+    print("API:", res.text)
 
     try:
         reply = res.json()["choices"][0]["message"]["content"]
     except:
-        return "AI đang lag 😭"
+        return "Tao đang lag tí 😭"
 
     chat_history[user_id].append({"role": "assistant", "content": reply})
 
     return reply
 
 
-# ====== BOT ======
+# ===== BOT =====
 class MyClient(discord.Client):
     def __init__(self):
         intents = discord.Intents.default()
@@ -92,23 +95,21 @@ class MyClient(discord.Client):
             await message.reply("Vietcong on the mic!", mention_author=False)
             return
 
-        # ===== AI CHAT =====
-        if self.user in message.mentions or random.random() < 0.3:
+        # ===== AI CHAT (CHỈ KHI TAG) =====
+        if self.user not in message.mentions:
+            return
 
-            # 🔥 FIX mention chuẩn
-            content = message.content
-            content = content.replace(f"<@{self.user.id}>", "")
-            content = content.replace(f"<@!{self.user.id}>", "")
-            content = content.strip()
+        content = message.content
+        content = content.replace(f"<@{self.user.id}>", "")
+        content = content.replace(f"<@!{self.user.id}>", "")
+        content = content.strip()
 
-            print("INPUT:", content)
+        if not content:
+            return
 
-            if not content:
-                return
+        reply = chat_ai(str(message.author.id), content[:300])
 
-            reply = chat_ai(str(message.author.id), content[:200])
-
-            await message.reply(reply)
+        await message.reply(reply)
 
 
 client = MyClient()
