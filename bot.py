@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
-import asyncio
 import logging
 from logging.handlers import RotatingFileHandler
-from typing import Optional
 import random
 import requests
 import os
@@ -23,7 +21,7 @@ root = logging.getLogger()
 root.setLevel(logging.INFO)
 root.addHandler(handler)
 
-# ====== AI CHAT ======
+# ====== AI ======
 chat_history = {}
 
 def chat_ai(user_id, message):
@@ -33,7 +31,7 @@ def chat_ai(user_id, message):
         chat_history[user_id] = [
             {
                 "role": "system",
-                "content": "Bạn là bạn thân, nói chuyện kiểu Gen Z Việt Nam, hài hước, hơi cà khịa, nói ngắn gọn."
+                "content": "Bạn là bạn thân, nói chuyện kiểu Gen Z Việt Nam, hài hước, cà khịa nhẹ, trả lời ngắn gọn."
             }
         ]
 
@@ -52,15 +50,17 @@ def chat_ai(user_id, message):
 
     res = requests.post(url, headers=headers, json=data)
 
+    print("API RESPONSE:", res.text)  # debug
+
     try:
         reply = res.json()["choices"][0]["message"]["content"]
     except:
-        print("Lỗi AI:", res.text)
-        return "AI lag rồi bro 😭"
+        return "AI đang lag 😭"
 
     chat_history[user_id].append({"role": "assistant", "content": reply})
 
     return reply
+
 
 # ====== BOT ======
 class MyClient(discord.Client):
@@ -94,13 +94,22 @@ class MyClient(discord.Client):
 
         # ===== AI CHAT =====
         if self.user in message.mentions or random.random() < 0.3:
-            content = message.content.replace(f"<@{self.user.id}>", "").strip()
+
+            # 🔥 FIX mention chuẩn
+            content = message.content
+            content = content.replace(f"<@{self.user.id}>", "")
+            content = content.replace(f"<@!{self.user.id}>", "")
+            content = content.strip()
+
+            print("INPUT:", content)
 
             if not content:
                 return
 
-            reply = chat_ai(str(message.author.id), content)
+            reply = chat_ai(str(message.author.id), content[:200])
+
             await message.reply(reply)
+
 
 client = MyClient()
 
