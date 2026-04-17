@@ -43,29 +43,36 @@ def chat_ai(user_id, message):
         "Content-Type": "application/json"
     }
 
-    data = {
-        # ✅ MODEL ĐÃ FIX (KHÔNG LỖI 404)
-        "model": "openchat/openchat-7b",
-        "messages": chat_history[user_id],
-        "temperature": 0.9
-    }
+    # 🔥 danh sách model (thử lần lượt)
+    models = [
+        "meta-llama/llama-3-8b-instruct",
+        "gryphe/mythomax-l2-13b",
+        "nousresearch/nous-capybara-7b"
+    ]
 
-    res = requests.post(url, headers=headers, json=data)
+    for model in models:
+        data = {
+            "model": model,
+            "messages": chat_history[user_id],
+            "temperature": 0.9
+        }
 
-    print("STATUS:", res.status_code)
-    print("API:", res.text)
+        res = requests.post(url, headers=headers, json=data)
 
-    if res.status_code != 200:
-        return "Tao đang lỗi API rồi 😭"
+        print("TRY MODEL:", model)
+        print("STATUS:", res.status_code)
 
-    try:
-        reply = res.json()["choices"][0]["message"]["content"]
-    except:
-        return "API lỗi 😭"
+        if res.status_code != 200:
+            continue
 
-    chat_history[user_id].append({"role": "assistant", "content": reply})
+        try:
+            reply = res.json()["choices"][0]["message"]["content"]
+            chat_history[user_id].append({"role": "assistant", "content": reply})
+            return reply
+        except:
+            continue
 
-    return reply
+    return "Tao đang lỗi AI rồi 😭"
 
 
 # ===== BOT =====
@@ -102,12 +109,10 @@ class MyClient(discord.Client):
             await message.reply("Vietcong on the mic!", mention_author=False)
             return
 
-        # ===== TRIGGER CHAT =====
-        # 👉 không cần tag, chỉ cần bắt đầu bằng "bot"
+        # ===== CHAT =====
         if not content.startswith("bot"):
             return
 
-        # xóa chữ bot
         content = content.replace("bot", "", 1).strip()
 
         print("INPUT:", content)
