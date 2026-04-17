@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO, handlers=[handler])
 
 # ===== MEMORY =====
 chat_history = {}
-MAX_HISTORY = 15
+MAX_HISTORY = 10
 
 # ===== AI =====
 def chat_ai(user_id, message):
@@ -28,11 +28,7 @@ def chat_ai(user_id, message):
         chat_history[user_id] = [
             {
                 "role": "system",
-                "content": (
-                    "Bạn là bạn thân cực kỳ lầy lội, nói chuyện kiểu Gen Z Việt Nam. "
-                    "Hài hước, cà khịa nhẹ, nói ngắn gọn như người thật. "
-                    "Đôi lúc trêu người dùng nhưng không toxic quá."
-                )
+                "content": "Bạn là bạn thân lầy lội, nói chuyện kiểu Gen Z Việt Nam, cà khịa nhẹ, tự nhiên như người thật."
             }
         ]
 
@@ -45,7 +41,7 @@ def chat_ai(user_id, message):
     }
 
     data = {
-        "model": "mistralai/mistral-7b-instruct",  # 🔥 model ổn định
+        "model": "mistralai/mistral-7b-instruct",
         "messages": chat_history[user_id],
         "temperature": 0.9
     }
@@ -56,12 +52,12 @@ def chat_ai(user_id, message):
     print("API:", res.text)
 
     if res.status_code != 200:
-        return "Tao đang bị lỗi API 😭"
+        return "Lỗi API rồi 😭"
 
     try:
         reply = res.json()["choices"][0]["message"]["content"]
     except:
-        return "API trả dữ liệu lỗi 😭"
+        return "API lỗi format 😭"
 
     chat_history[user_id].append({"role": "assistant", "content": reply})
 
@@ -86,6 +82,8 @@ class MyClient(discord.Client):
         print(f"✅ Bot ready as {self.user}")
 
     async def on_message(self, message):
+        print("📩 Nhận:", message.content)
+
         if message.author.bot:
             return
 
@@ -98,10 +96,10 @@ class MyClient(discord.Client):
             await message.reply("Vietcong on the mic!", mention_author=False)
             return
 
-        # ===== AI CHAT =====
         content = message.content
 
-        # 🔥 detect mention chuẩn + fallback
+        print("MENTIONS:", message.mentions)
+
         is_mention = (
             self.user in message.mentions
             or f"<@{self.user.id}>" in content
@@ -109,10 +107,12 @@ class MyClient(discord.Client):
             or content.lower().startswith("bot ")
         )
 
+        print("IS_MENTION:", is_mention)
+
         if not is_mention:
             return
 
-        # 🔥 xóa tag
+        # ===== XÓA TAG =====
         content = content.replace(f"<@{self.user.id}>", "")
         content = content.replace(f"<@!{self.user.id}>", "")
         content = content.lower().replace("bot", "", 1)
