@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO, handlers=[handler])
 
 # ===== MEMORY =====
 chat_history = {}
-MAX_HISTORY = 10
+MAX_HISTORY = 15
 
 # ===== AI =====
 def chat_ai(user_id, message):
@@ -29,8 +29,9 @@ def chat_ai(user_id, message):
             {
                 "role": "system",
                 "content": (
-                    "Bạn là bạn thân lầy lội, nói chuyện kiểu Gen Z Việt Nam. "
-                    "Hài hước, cà khịa nhẹ, nói ngắn gọn như người thật."
+                    "Bạn là bạn thân cực kỳ lầy lội, nói chuyện kiểu Gen Z Việt Nam. "
+                    "Hài hước, cà khịa nhẹ, nói ngắn gọn, tự nhiên như người thật. "
+                    "Đôi lúc trêu người dùng, có cảm xúc, không trả lời kiểu máy móc."
                 )
             }
         ]
@@ -43,36 +44,28 @@ def chat_ai(user_id, message):
         "Content-Type": "application/json"
     }
 
-    # 🔥 danh sách model (thử lần lượt)
-    models = [
-        "meta-llama/llama-3-8b-instruct",
-        "gryphe/mythomax-l2-13b",
-        "nousresearch/nous-capybara-7b"
-    ]
+    data = {
+        "model": "meta-llama/llama-3-8b-instruct",  # 🔥 MODEL CHẠY ỔN
+        "messages": chat_history[user_id],
+        "temperature": 0.9
+    }
 
-    for model in models:
-        data = {
-            "model": model,
-            "messages": chat_history[user_id],
-            "temperature": 0.9
-        }
+    res = requests.post(url, headers=headers, json=data)
 
-        res = requests.post(url, headers=headers, json=data)
+    print("STATUS:", res.status_code)
 
-        print("TRY MODEL:", model)
-        print("STATUS:", res.status_code)
+    if res.status_code != 200:
+        print("API ERROR:", res.text)
+        return "Tao hơi lag tí 😭"
 
-        if res.status_code != 200:
-            continue
+    try:
+        reply = res.json()["choices"][0]["message"]["content"]
+    except:
+        return "API lỗi 😭"
 
-        try:
-            reply = res.json()["choices"][0]["message"]["content"]
-            chat_history[user_id].append({"role": "assistant", "content": reply})
-            return reply
-        except:
-            continue
+    chat_history[user_id].append({"role": "assistant", "content": reply})
 
-    return "Tao đang lỗi AI rồi 😭"
+    return reply
 
 
 # ===== BOT =====
@@ -93,8 +86,6 @@ class MyClient(discord.Client):
         print(f"✅ Bot ready as {self.user}")
 
     async def on_message(self, message):
-        print("📩 Nhận:", message.content)
-
         if message.author.bot:
             return
 
@@ -113,9 +104,8 @@ class MyClient(discord.Client):
         if not content.startswith("bot"):
             return
 
+        # bỏ chữ bot
         content = content.replace("bot", "", 1).strip()
-
-        print("INPUT:", content)
 
         if not content:
             return
