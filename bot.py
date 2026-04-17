@@ -29,8 +29,8 @@ def chat_ai(user_id, message):
             {
                 "role": "system",
                 "content": (
-                    "Bạn là bạn thân lầy lội, nói chuyện kiểu Gen Z Việt Nam, "
-                    "hài hước, cà khịa nhẹ, nói ngắn gọn như người thật."
+                    "Bạn là bạn thân lầy lội, nói chuyện kiểu Gen Z Việt Nam. "
+                    "Hài hước, cà khịa nhẹ, nói ngắn gọn như người thật."
                 )
             }
         ]
@@ -44,7 +44,8 @@ def chat_ai(user_id, message):
     }
 
     data = {
-        "model": "mistralai/mistral-7b-instruct",
+        # ✅ MODEL ĐÃ FIX (KHÔNG LỖI 404)
+        "model": "openchat/openchat-7b",
         "messages": chat_history[user_id],
         "temperature": 0.9
     }
@@ -102,11 +103,11 @@ class MyClient(discord.Client):
             return
 
         # ===== TRIGGER CHAT =====
-        # 🔥 chỉ cần bắt đầu bằng "bot"
+        # 👉 không cần tag, chỉ cần bắt đầu bằng "bot"
         if not content.startswith("bot"):
             return
 
-        # xóa chữ "bot"
+        # xóa chữ bot
         content = content.replace("bot", "", 1).strip()
 
         print("INPUT:", content)
