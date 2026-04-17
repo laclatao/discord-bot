@@ -3,6 +3,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import requests
 import os
+import random
 
 import discord
 from discord import app_commands
@@ -11,6 +12,9 @@ from discord import app_commands
 TOKEN = os.getenv("TOKEN")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 GUILD_ID = 1365241690893586493
+
+# 👉 TÊN BOT (có thể đổi thoải mái)
+BOT_NAMES = ["lala", "laclatao", "bé"]  # viết thường
 
 # ===== LOG =====
 handler = RotatingFileHandler("bot.log", maxBytes=5_000_000, backupCount=3, encoding="utf-8")
@@ -29,9 +33,9 @@ def chat_ai(user_id, message):
             {
                 "role": "system",
                 "content": (
-                    "Bạn là bạn thân cực kỳ lầy lội, nói chuyện kiểu Gen Z Việt Nam. "
-                    "Hài hước, cà khịa nhẹ, nói ngắn gọn, tự nhiên như người thật. "
-                    "Đôi lúc trêu người dùng, có cảm xúc, không trả lời kiểu máy móc."
+                    "Bạn là một người bạn thân, nói chuyện tự nhiên, thân thiện, hơi hài hước. "
+                    "Trả lời ngắn gọn, dễ hiểu, giống người thật. "
+                    "Đôi lúc trêu nhẹ nhưng không gây khó chịu."
                 )
             }
         ]
@@ -45,7 +49,7 @@ def chat_ai(user_id, message):
     }
 
     data = {
-        "model": "meta-llama/llama-3-8b-instruct",  # 🔥 MODEL CHẠY ỔN
+        "model": "meta-llama/llama-3-8b-instruct",
         "messages": chat_history[user_id],
         "temperature": 0.9
     }
@@ -92,7 +96,7 @@ class MyClient(discord.Client):
         content = message.content.lower()
 
         # ===== VC =====
-        if content == "vc":
+        if content.strip() == "vc":
             try:
                 await message.delete()
             except:
@@ -100,12 +104,20 @@ class MyClient(discord.Client):
             await message.reply("Vietcong on the mic!", mention_author=False)
             return
 
-        # ===== CHAT =====
-        if not content.startswith("bot"):
+        # ===== CHECK GỌI BOT Ở BẤT KỲ ĐÂU =====
+        mentioned = any(name in content for name in BOT_NAMES)
+
+        # 👉 thêm 10% bot tự nói chuyện cho "có hồn"
+        auto_chat = random.random() < 0.1
+
+        if not mentioned and not auto_chat:
             return
 
-        # bỏ chữ bot
-        content = content.replace("bot", "", 1).strip()
+        # 👉 xóa tên bot khỏi câu
+        for name in BOT_NAMES:
+            content = content.replace(name, "")
+
+        content = content.strip()
 
         if not content:
             return
