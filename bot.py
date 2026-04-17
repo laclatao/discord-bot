@@ -4,6 +4,7 @@ from logging.handlers import RotatingFileHandler
 import requests
 import os
 import random
+import re
 
 import discord
 from discord import app_commands
@@ -23,6 +24,13 @@ logging.basicConfig(level=logging.INFO, handlers=[handler])
 chat_history = {}
 MAX_HISTORY = 10
 
+# ===== CLEAN OUTPUT (CHỐNG LOẠN NGÔN NGỮ) =====
+def clean_reply(text: str) -> str:
+    # Nếu có ký tự lạ (Cyrillic, German...) → reset
+    if re.search(r"[А-Яа-яЁёÜüß]", text):
+        return "nãy nói nhảm tí :v"
+    return text.strip()
+
 # ===== AI =====
 def chat_ai(user_id, message):
     url = "https://openrouter.ai/api/v1/chat/completions"
@@ -33,11 +41,11 @@ def chat_ai(user_id, message):
                 "role": "system",
                 "content": (
                     "Mày là bạn thân. "
+                    "LUÔN chỉ được trả lời bằng tiếng Việt. "
+                    "KHÔNG dùng tiếng Anh hay ngôn ngữ khác. "
                     "Trả lời cực ngắn, tối đa 1 câu. "
-                    "Không giải thích, không dài dòng. "
                     "Nói tự nhiên như chat ngoài đời. "
-                    "Luôn nói tiếng Việt. "
-                    "Ưu tiên câu ngắn kiểu: 'ừ', 'ok', 'vl', 'đang chán đây'."
+                    "Không giải thích, không dài dòng."
                 )
             }
         ]
@@ -53,7 +61,7 @@ def chat_ai(user_id, message):
     data = {
         "model": "meta-llama/llama-3-8b-instruct",
         "messages": chat_history[user_id],
-        "temperature": 1.0,
+        "temperature": 0.9,
         "max_tokens": 40
     }
 
@@ -67,6 +75,7 @@ def chat_ai(user_id, message):
 
     try:
         reply = res.json()["choices"][0]["message"]["content"]
+        reply = clean_reply(reply)
     except:
         return "lỗi 😭"
 
@@ -120,7 +129,7 @@ class MyClient(discord.Client):
         # ===== CHECK GỌI TÊN =====
         mentioned = any(name in content for name in BOT_NAMES)
 
-        # ===== AUTO CHAT 10% =====
+        # ===== AUTO CHAT =====
         auto = random.random() < 0.1
 
         if not mentioned and not is_reply_to_bot and not auto:
