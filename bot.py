@@ -13,8 +13,8 @@ TOKEN = os.getenv("TOKEN")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 GUILD_ID = 1365241690893586493
 
-# 👉 TÊN BOT (có thể đổi thoải mái)
-BOT_NAMES = ["lala", "laclatao", "bé"]  # viết thường
+# 👉 tên gọi bot (có thể đổi)
+BOT_NAMES = ["lala", "bé", "laclatao"]
 
 # ===== LOG =====
 handler = RotatingFileHandler("bot.log", maxBytes=5_000_000, backupCount=3, encoding="utf-8")
@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO, handlers=[handler])
 
 # ===== MEMORY =====
 chat_history = {}
-MAX_HISTORY = 15
+MAX_HISTORY = 10
 
 # ===== AI =====
 def chat_ai(user_id, message):
@@ -33,9 +33,11 @@ def chat_ai(user_id, message):
             {
                 "role": "system",
                 "content": (
-                    "Bạn là một người bạn thân, nói chuyện tự nhiên, thân thiện, hơi hài hước. "
-                    "Trả lời ngắn gọn, dễ hiểu, giống người thật. "
-                    "Đôi lúc trêu nhẹ nhưng không gây khó chịu."
+                    "Mày là bạn thân. "
+                    "Trả lời cực ngắn, tối đa 1 câu. "
+                    "Không giải thích, không dài dòng. "
+                    "Nói tự nhiên như chat ngoài đời. "
+                    "Ưu tiên câu ngắn kiểu: 'ừ', 'ok', 'vl', 'đang chán đây'."
                 )
             }
         ]
@@ -51,7 +53,8 @@ def chat_ai(user_id, message):
     data = {
         "model": "meta-llama/llama-3-8b-instruct",
         "messages": chat_history[user_id],
-        "temperature": 0.9
+        "temperature": 1.0,
+        "max_tokens": 40   # 🔥 ép nói ngắn
     }
 
     res = requests.post(url, headers=headers, json=data)
@@ -60,12 +63,12 @@ def chat_ai(user_id, message):
 
     if res.status_code != 200:
         print("API ERROR:", res.text)
-        return "Tao hơi lag tí 😭"
+        return "lag tí 😭"
 
     try:
         reply = res.json()["choices"][0]["message"]["content"]
     except:
-        return "API lỗi 😭"
+        return "lỗi 😭"
 
     chat_history[user_id].append({"role": "assistant", "content": reply})
 
@@ -104,16 +107,16 @@ class MyClient(discord.Client):
             await message.reply("Vietcong on the mic!", mention_author=False)
             return
 
-        # ===== CHECK GỌI BOT Ở BẤT KỲ ĐÂU =====
+        # ===== TRIGGER =====
         mentioned = any(name in content for name in BOT_NAMES)
 
-        # 👉 thêm 10% bot tự nói chuyện cho "có hồn"
-        auto_chat = random.random() < 0.1
+        # 10% tự nói chuyện
+        auto = random.random() < 0.1
 
-        if not mentioned and not auto_chat:
+        if not mentioned and not auto:
             return
 
-        # 👉 xóa tên bot khỏi câu
+        # bỏ tên bot
         for name in BOT_NAMES:
             content = content.replace(name, "")
 
@@ -122,7 +125,7 @@ class MyClient(discord.Client):
         if not content:
             return
 
-        reply = chat_ai(str(message.author.id), content[:300])
+        reply = chat_ai(str(message.author.id), content[:200])
 
         await message.reply(reply)
 
